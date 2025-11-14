@@ -1,13 +1,19 @@
-# save as pose_right_elbow_overlay.py
 import cv2
 import math
 import mediapipe as mp
 
-VIDEO_IN = "./dodgers02.mp4"
+# ==== CONFIGURATION ====
+VIDEO_IN = "./dodgers01.mp4"
 VIDEO_OUT = "./dodgers_annotated.mp4"   # set to None if you don't want to save
 PLAYBACK_SPEED = 0.35  # 1.0 = real-time-ish, 0.5 = half speed, 0.35 ~ slo-mo
 
+# True  = analyze right arm (right-handed pitcher)
+# False = analyze left arm (left-handed pitcher)
+USE_RIGHT_ARM = False
+# =======================
+
 mp_pose = mp.solutions.pose
+
 
 def angle_deg(a, b, c):
     """Angle ABC at point b in degrees. a,b,c are (x,y,z) floats."""
@@ -26,9 +32,11 @@ def angle_deg(a, b, c):
     cos_t = max(-1.0, min(1.0, dot / (nba * nbc)))
     return math.degrees(math.acos(cos_t))
 
+
 def to_px(landmark, w, h):
     """Convert normalized landmark to pixel coordinates."""
     return int(landmark.x * w), int(landmark.y * h)
+
 
 def draw_angle_arc(img, A, B, C, color=(0, 255, 255)):
     """
@@ -62,12 +70,14 @@ def draw_angle_arc(img, A, B, C, color=(0, 255, 255)):
         if da > 180:
             da -= 360
         return da
+
     sweep = shortest_sweep(angA, angC)
 
     cv2.ellipse(img, B, (r, r), 0, angA, angA + sweep, color, 2, cv2.LINE_AA)
     return theta
 
-# <<< NEW: 2D angle between upper arm (shoulder->elbow) and a horizontal line
+
+# 2D angle between upper arm (shoulder->elbow) and a horizontal line
 def arm_angle_to_horizontal(A, B):
     """
     Angle (in degrees) between the segment A->B (shoulder->elbow)
@@ -106,6 +116,9 @@ def main():
         out_fps = max(10.0, out_fps)
         writer = cv2.VideoWriter(VIDEO_OUT, fourcc, out_fps, (width, height))
 
+    # Label for HUD/prints based on boolean
+    ARM_LABEL = "Right" if USE_RIGHT_ARM else "Left"
+
     with mp_pose.Pose(
         static_image_mode=False,
         model_complexity=1,
@@ -127,29 +140,37 @@ def main():
             results = pose.process(frame_rgb)
 
             angle_text = "None"
-            arm_angle_text = "None"   # <<< NEW
+            arm_angle_text = "None"
 
             if results.pose_landmarks:
                 lm = results.pose_landmarks.landmark
-                r_sh = lm[mp_pose.PoseLandmark.RIGHT_SHOULDER]
-                r_el = lm[mp_pose.PoseLandmark.RIGHT_ELBOW]
-                r_wr = lm[mp_pose.PoseLandmark.RIGHT_WRIST]
 
-                vis_ok = (r_sh.visibility > 0.5 and r_el.visibility > 0.5 and r_wr.visibility > 0.5)
+                # === Choose which arm to use based on USE_RIGHT_ARM ===
+                if USE_RIGHT_ARM:
+                    sh = lm[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+                    el = lm[mp_pose.PoseLandmark.RIGHT_ELBOW]
+                    wr = lm[mp_pose.PoseLandmark.RIGHT_WRIST]
+                else:
+                    sh = lm[mp_pose.PoseLandmark.LEFT_SHOULDER]
+                    el = lm[mp_pose.PoseLandmark.LEFT_ELBOW]
+                    wr = lm[mp_pose.PoseLandmark.LEFT_WRIST]
+                # =====================================================
+
+                vis_ok = (sh.visibility > 0.5 and el.visibility > 0.5 and wr.visibility > 0.5)
                 if vis_ok:
                     # 3D elbow angle for numeric readout
                     angle3d = angle_deg(
-                        (r_sh.x, r_sh.y, r_sh.z),
-                        (r_el.x, r_el.y, r_el.z),
-                        (r_wr.x, r_wr.y, r_wr.z),
+                        (sh.x, sh.y, sh.z),
+                        (el.x, el.y, el.z),
+                        (wr.x, wr.y, wr.z),
                     )
                     if angle3d is not None and not math.isnan(angle3d):
                         angle_text = f"{angle3d:6.2f}"
 
                     # 2D pixel coordinates
-                    A = to_px(r_sh, width, height)  # shoulder
-                    B = to_px(r_el, width, height)  # elbow
-                    C = to_px(r_wr, width, height)  # wrist
+                    A = to_px(sh, width, height)  # shoulder
+                    B = to_px(el, width, height)  # elbow
+                    C = to_px(wr, width, height)  # wrist
 
                     # Segments (shoulder->elbow, elbow->wrist)
                     cv2.line(frame_bgr, A, B, (0, 255, 0), 4, cv2.LINE_AA)
@@ -159,43 +180,43 @@ def main():
                     for p in (A, B, C):
                         cv2.circle(frame_bgr, p, 6, (255, 255, 255), -1, cv2.LINE_AA)
 
-                    # Angle arc at the elbow + on-arc label
+                    # Angle arc at the elbow
                     theta2d = draw_angle_arc(frame_bgr, A, B, C, color=(0, 255, 255))
-                    # if theta2d is not None:                           commented
+                    # If you want the 2D elbow angle label on the arc, uncomment:
+                    # if theta2d is not None:
                     #     cv2.putText(frame_bgr, f"{theta2d:.1f}°",
                     #                 (B[0] + 10, B[1] - 10),
                     #                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
 
-                    # <<< NEW: horizontal reference line from shoulder
+                    # Horizontal reference line from shoulder
                     horiz_len = 150  # pixels; tweak to taste
                     H = (A[0] + horiz_len, A[1])
                     cv2.line(frame_bgr, A, H, (255, 0, 0), 2, cv2.LINE_AA)
 
-                    # <<< NEW: angle between upper arm and horizontal
+                    # Angle between upper arm and horizontal
                     arm_angle = arm_angle_to_horizontal(A, B)
                     if arm_angle is not None:
                         arm_angle_text = f"{arm_angle:6.2f}"
-                        # Draw the text near the shoulder
-                        # cv2.putText(frame_bgr, f"Arm:{arm_angle:.1f}°",       commented 
+                        # If you want it near the shoulder, uncomment:
+                        # cv2.putText(frame_bgr, f"Arm:{arm_angle:.1f}°",
                         #             (A[0] + 10, A[1] - 10),
                         #             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2, cv2.LINE_AA)
 
             # Overlay HUD text
-            cv2.putText(frame_bgr, f"Right Elbow: {angle_text}",
+            cv2.putText(frame_bgr, f"{ARM_LABEL} Elbow: {angle_text}",
                         (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (50, 220, 255), 2, cv2.LINE_AA)
 
-            # <<< NEW: HUD line for arm angle to horizontal
-            cv2.putText(frame_bgr, f"Right Arm vs Horiz: {arm_angle_text}",
+            cv2.putText(frame_bgr, f"{ARM_LABEL} Arm vs Horiz: {arm_angle_text}",
                         (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 180, 255), 2, cv2.LINE_AA)
 
             cv2.putText(frame_bgr, f"t={t_sec:6.3f}s  slow={PLAYBACK_SPEED}x",
                         (20, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 200), 2, cv2.LINE_AA)
 
             # Terminal print
-            print(f"[{t_sec:8.3f}s] right_elbow_angle: {angle_text}  arm_vs_horiz: {arm_angle_text}")
+            print(f"[{t_sec:8.3f}s] {ARM_LABEL.lower()}_elbow_angle: {angle_text}  arm_vs_horiz: {arm_angle_text}")
 
             # Show + (optional) write
-            cv2.imshow("Pitching - Right Elbow Angle + Arm Angle", frame_bgr)
+            cv2.imshow("Pitching - Elbow Angle + Arm Angle", frame_bgr)
             if writer:
                 writer.write(frame_bgr)
 
@@ -209,6 +230,7 @@ def main():
         print(f"Saved annotated video to: {VIDEO_OUT}")
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()
