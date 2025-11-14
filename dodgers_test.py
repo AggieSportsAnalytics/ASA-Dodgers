@@ -4,8 +4,8 @@ import math
 import mediapipe as mp
 from collections import deque
 
-VIDEO_IN = '/Users/ruhanirekhi/Downloads/dodgers02.mp4'
-VIDEO_OUT = '/Users/ruhanirekhi/Downloads/dodgers_meow.mp4'    # set to None if you don't want to save
+VIDEO_IN = '/Users/ruhanirekhi/Downloads/test_pitch1-2.mp4'
+VIDEO_OUT = '/Users/ruhanirekhi/Downloads/testerrrr.mp4'    # set to None if you don't want to save
 PLAYBACK_SPEED = 0.35  # 1.0 = real-time-ish, 0.5 = half speed, 0.35 ~ slo-mo
 
 mp_pose = mp.solutions.pose
