@@ -10,7 +10,7 @@ pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5)
 mp_drawing = mp.solutions.drawing_utils
 
 # Open video
-cap = cv2.VideoCapture('pitch2.mov')
+cap = cv2.VideoCapture('pitch5.mov')
 
 # Get video properties
 fps = int(cap.get(cv2.CAP_PROP_FPS))
@@ -106,7 +106,6 @@ wrist_heights_clean = clean_data(wrist_heights)
 distances_clean = clean_data(shoulder_to_wrist_distances)
 velocities_clean = np.array(wrist_velocities)
 
-# --- REFINED RELEASE FRAME DETECTION ---
 start_frame = 5  # skip first few frames to avoid initial noise
 norm_elbow = (elbow_extension_clean - elbow_extension_clean.min()) / (elbow_extension_clean.max() - elbow_extension_clean.min())
 norm_distance = (distances_clean - distances_clean.min()) / (distances_clean.max() - distances_clean.min())
