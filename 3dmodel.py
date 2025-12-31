@@ -62,7 +62,7 @@ lm_smoother = LandmarkSmoother3D(alpha_pos=0.7, alpha_vel=0.8)
 # Video input
 # ========================================
 
-cap = cv2.VideoCapture('pitch13.mov')
+cap = cv2.VideoCapture('pitch4.mov')
 
 fps = int(cap.get(cv2.CAP_PROP_FPS))
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -682,10 +682,6 @@ print(f"\n✓ Annotated video saved as: {output_path}")
 # ========================================
 
 # ========================================
-# MuJoCo: Enhanced 3D model with better IK
-# ========================================
-
-# ========================================
 # MuJoCo: Enhanced 3D model with better IK - LOOPING ANIMATION
 # ========================================
 
@@ -693,62 +689,119 @@ print("\n" + "=" * 60)
 print("MUJOCO FULL BODY RECONSTRUCTION (ENHANCED 3D)")
 print("=" * 60)
 
-# Filter and prepare landmarks for MuJoCo
-filtered_landmarks = [lm for lm in all_landmarks if lm is not None]
+# Filter and prepare landmarks for MuJoCo - INCLUDING ALL FRAMES
+print("\n  Preparing landmarks for animation...")
 
-print(f"\n  Total frames in video: {len(frames_data)}")
-print(f"  Frames with valid landmarks: {len(filtered_landmarks)}")
+# Create arrays for all frames
+T_total = len(frames_data)
+landmarks_3d_full = np.zeros((T_total, 33, 3))
 
-if len(filtered_landmarks) == 0:
-    raise RuntimeError("No valid landmarks for MuJoCo playback")
+# First pass: fill with available landmarks
+valid_count = 0
+for i, lm in enumerate(all_landmarks):
+    if lm is not None:
+        landmarks_3d_full[i] = lm[:, :3]  # Extract x, y, z
+        valid_count += 1
+    else:
+        # Mark as invalid with NaN
+        landmarks_3d_full[i] = np.nan
 
-# Prepare 3D landmarks array
-T_valid = len(filtered_landmarks)
-landmarks_3d = np.zeros((T_valid, 33, 3))
+print(f"  Valid landmarks: {valid_count}/{T_total} frames")
 
-for i, lm in enumerate(filtered_landmarks):
-    landmarks_3d[i] = lm[:, :3]  # Extract x, y, z
+# Interpolate missing frames
+print("  Interpolating missing frames...")
+for joint_idx in range(33):
+    for coord_idx in range(3):
+        series = landmarks_3d_full[:, joint_idx, coord_idx]
+        
+        # Create mask for valid values
+        valid_mask = ~np.isnan(series)
+        valid_indices = np.where(valid_mask)[0]
+        
+        if len(valid_indices) >= 2:
+            # Interpolate missing values
+            series_interp = np.interp(
+                np.arange(len(series)),
+                valid_indices,
+                series[valid_indices]
+            )
+            landmarks_3d_full[:, joint_idx, coord_idx] = series_interp
+        elif len(valid_indices) == 1:
+            # Fill with single valid value
+            landmarks_3d_full[:, joint_idx, coord_idx] = series[valid_indices[0]]
+        # If no valid values, leave as is (will be 0)
 
 # Apply 3D smoothing
-def smooth_3d_trajectory(trajectory, window_size=5):
+def smooth_3d_trajectory(trajectory, window_size=7):
+    """Smooth trajectory while preserving edges for fast movements"""
     if len(trajectory) < window_size:
         return trajectory
     
-    smoothed = np.zeros_like(trajectory)
-    half_window = window_size // 2
-    
-    for i in range(len(trajectory)):
-        start = max(0, i - half_window)
-        end = min(len(trajectory), i + half_window + 1)
-        smoothed[i] = np.mean(trajectory[start:end], axis=0)
+    # Use Savitzky-Golay filter for better edge preservation
+    try:
+        from scipy.signal import savgol_filter
+        smoothed = savgol_filter(trajectory, window_size, 2, axis=0)
+    except:
+        # Fallback to moving average
+        smoothed = np.zeros_like(trajectory)
+        half_window = window_size // 2
+        
+        for i in range(len(trajectory)):
+            start = max(0, i - half_window)
+            end = min(len(trajectory), i + half_window + 1)
+            smoothed[i] = np.mean(trajectory[start:end], axis=0)
     
     return smoothed
 
-# Smooth each joint trajectory
+print("  Smoothing trajectories...")
+# Apply more aggressive smoothing for pitching arm joints
 for joint_idx in range(33):
-    trajectory = landmarks_3d[:, joint_idx, :]
-    landmarks_3d[:, joint_idx, :] = smooth_3d_trajectory(trajectory, window_size=7)
+    trajectory = landmarks_3d_full[:, joint_idx, :]
+    landmarks_3d_full[:, joint_idx, :] = smooth_3d_trajectory(trajectory, window_size=5)
+
+# Special handling for pitching arm (right arm joints: 11, 13, 15)
+# Apply less smoothing to preserve the fast pitching motion
+pitching_joints = [11, 13, 15]  # Right shoulder, elbow, wrist
+print("  Preserving fast motion for pitching arm...")
+for joint_idx in pitching_joints:
+    trajectory = landmarks_3d_full[:, joint_idx, :]
+    landmarks_3d_full[:, joint_idx, :] = smooth_3d_trajectory(trajectory, window_size=3)
 
 # Create mapping from video frames to smoothed landmarks
-frame_to_landmark_idx = []
-landmark_idx = 0
-for lm in all_landmarks:
-    if lm is not None:
-        frame_to_landmark_idx.append(landmark_idx)
-        landmark_idx += 1
-    else:
-        frame_to_landmark_idx.append(-1)
+print("  Creating frame mapping...")
+frame_to_landmark_idx = list(range(T_total))  # Now all frames have data
 
-# Enhanced 3D mapping function
-def mp_to_mj_3d(pt, scale_factor=2.0, depth_scale=1.5):
-    """Convert MediaPipe 3D coordinates to MuJoCo world coordinates"""
+# Enhanced 3D mapping function with better forward motion
+def mp_to_mj_3d(pt, frame_idx, total_frames, scale_factor=2.0, depth_scale=2.0):
+    """Convert MediaPipe 3D coordinates to MuJoCo world coordinates with forward motion"""
     x, y, z = pt
     
     # MediaPipe coordinates: x,y in [0,1], z is relative depth
     # Convert to MuJoCo coordinates
-    world_x = (x - 0.5) * scale_factor  # Center and scale horizontally
-    world_y = -z * depth_scale  # Use z as forward/back (negative for forward)
-    world_z = 1.0 + (0.5 - y) * scale_factor  # Vertical position
+    
+    # Horizontal position
+    world_x = (x - 0.5) * scale_factor
+    
+    # Forward/back position - enhanced for pitching motion
+    # Add forward lean during release phase
+    forward_bias = 0
+    if release_frame - 10 <= frame_idx <= release_frame + 10:
+        # Lean forward during release
+        forward_bias = 0.3 * (1 - abs(frame_idx - release_frame) / 10)
+    
+    world_y = -z * depth_scale - forward_bias  # More forward movement
+    
+    # Vertical position with pitching motion enhancement
+    base_height = 1.0
+    vertical_adjust = 0
+    if release_frame - 5 <= frame_idx <= release_frame + 5:
+        # Slight dip then rise during release
+        if frame_idx <= release_frame:
+            vertical_adjust = -0.1 * (release_frame - frame_idx) / 5
+        else:
+            vertical_adjust = 0.05 * (frame_idx - release_frame) / 5
+    
+    world_z = base_height + (0.5 - y) * scale_factor + vertical_adjust
     
     return np.array([world_x, world_y, world_z])
 
@@ -756,7 +809,8 @@ def mp_to_mj_3d(pt, scale_factor=2.0, depth_scale=1.5):
 def estimate_body_proportions(landmarks):
     """Estimate body segment lengths from landmarks"""
     # Use average of several frames for stable estimates
-    avg_lm = np.mean(landmarks[:min(30, len(landmarks))], axis=0)
+    sample_size = min(30, len(landmarks))
+    avg_lm = np.mean(landmarks[:sample_size], axis=0)
     
     # Calculate lengths
     torso_len = np.linalg.norm(avg_lm[11] - avg_lm[23]) + np.linalg.norm(avg_lm[12] - avg_lm[24])
@@ -777,137 +831,162 @@ def estimate_body_proportions(landmarks):
     }
 
 # Get body proportions
-proportions = estimate_body_proportions(landmarks_3d)
+proportions = estimate_body_proportions(landmarks_3d_full)
 print("\n  Estimated body proportions:")
 for part, length in proportions.items():
     print(f"    {part}: {length:.3f}")
 
-# Scale factors based on estimated proportions
-scale_torso = proportions['torso'] / 0.5 if proportions['torso'] > 0 else 1.0  # Reference torso length
+# MANUAL ADJUSTMENTS FOR BETTER PROPORTIONS
+print("\n  Applying manual adjustments for better aesthetics:")
+print("    - Arms: Longer (increased by 25%)")
+print("    - Shoulder width: Narrower (reduced by 35%)")
+print("    - Torso: Thinner (reduced by 20%)")
+
+# Scale factors based on estimated proportions with MANUAL ADJUSTMENTS
+scale_torso = proportions['torso'] / 0.5 if proportions['torso'] > 0 else 1.0
+
+# ARM ADJUSTMENT: Make arms longer (increase by 25%)
+arm_length_multiplier = 1.25  # 25% longer arms
 scale_limb = ((proportions['upper_arm'] + proportions['forearm']) / 0.5 
-              if (proportions['upper_arm'] + proportions['forearm']) > 0 else 1.0)  # Reference arm length
+              if (proportions['upper_arm'] + proportions['forearm']) > 0 else 1.0) * arm_length_multiplier
+
+# BODY WIDTH ADJUSTMENT: Make body less wide (reduce by 35%)
+shoulder_width_multiplier = 0.65  # 35% narrower
+torso_width_multiplier = 0.80    # 20% thinner
+
+print(f"\n  Adjusted scaling factors:")
+print(f"    - Torso scale: {scale_torso:.3f}")
+print(f"    - Limb scale: {scale_limb:.3f} (with {arm_length_multiplier:.1f}x arm length multiplier)")
+print(f"    - Shoulder width multiplier: {shoulder_width_multiplier:.2f}")
+print(f"    - Torso width multiplier: {torso_width_multiplier:.2f}")
 
 # -------------------------
-# Simplified MJCF model - FIXED TEXTURE ISSUE
+# Enhanced MJCF model with PITCHING-OPTIMIZED PROPORTIONS
 # -------------------------
 
 mjcf = f"""
 <mujoco model="pitcher_3d">
     <compiler angle="radian" coordinate="local"/>
-    <option timestep="0.01" gravity="0 0 -9.81"/>
+    <option timestep="0.002" gravity="0 0 -9.81"/> <!-- Faster physics for quick movements -->
     
     <worldbody>
         <!-- Ground -->
         <geom name="ground" type="plane" size="5 5 0.1" rgba="0.8 0.9 0.8 1" pos="0 0 0"/>
         
-        <!-- Pitcher -->
+        <!-- Pitcher mound visual -->
+        <geom name="mound" type="cylinder" size="0.6 0.1" pos="0 -1.5 0" rgba="0.9 0.8 0.6 1"/>
+        
+        <!-- Pitcher with PITCHING-OPTIMIZED PROPORTIONS -->
         <body name="pelvis" pos="0 0 1.0">
-            <joint name="root_x" type="slide" axis="1 0 0" limited="true" range="-1 1" damping="100"/>
-            <joint name="root_y" type="slide" axis="0 1 0" limited="true" range="-1 1" damping="100"/>
-            <joint name="root_z" type="slide" axis="0 0 1" limited="true" range="0.5 2" damping="100"/>
-            <joint name="root_yaw" type="hinge" axis="0 0 1" limited="true" range="-45 45" damping="10"/>
-            <joint name="root_pitch" type="hinge" axis="1 0 0" limited="true" range="-30 30" damping="10"/>
-            <joint name="root_roll" type="hinge" axis="0 1 0" limited="true" range="-30 30" damping="10"/>
+            <joint name="root_x" type="slide" axis="1 0 0" limited="true" range="-1 1" damping="50"/>
+            <joint name="root_y" type="slide" axis="0 1 0" limited="true" range="-2 1" damping="50"/> <!-- More forward range -->
+            <joint name="root_z" type="slide" axis="0 0 1" limited="true" range="0.5 2" damping="50"/>
+            <joint name="root_yaw" type="hinge" axis="0 0 1" limited="true" range="-60 60" damping="8"/>
+            <joint name="root_pitch" type="hinge" axis="1 0 0" limited="true" range="-30 30" damping="8"/>
+            <joint name="root_roll" type="hinge" axis="0 1 0" limited="true" range="-30 30" damping="8"/>
 
-            <geom type="ellipsoid" size="0.08 0.12 0.1" rgba="0.7 0.6 0.6 1"/>
+            <geom type="ellipsoid" size="0.065 0.09 0.1" rgba="0.7 0.6 0.6 1"/> <!-- Narrower, more athletic pelvis -->
 
-            <!-- Torso -->
+            <!-- Torso - THINNER AND MORE FLEXIBLE -->
             <body name="torso" pos="0 0 0.15" euler="0 0 0">
-                <joint name="spine_y" type="hinge" axis="0 0 1" limited="true" range="-15 15" damping="5"/>
-                <joint name="spine_x" type="hinge" axis="1 0 0" limited="true" range="-20 20" damping="5"/>
+                <joint name="spine_y" type="hinge" axis="0 0 1" limited="true" range="-25 25" damping="4"/>
+                <joint name="spine_x" type="hinge" axis="1 0 0" limited="true" range="-30 20" damping="4"/>
                 
-                <geom type="capsule" fromto="0 0 0 0 0 {0.55*scale_torso:.3f}" size="0.12" rgba="0.6 0.7 0.6 1"/>
+                <geom type="capsule" fromto="0 0 0 0 0 {0.55*scale_torso:.3f}" size="0.095" rgba="0.6 0.7 0.6 1"/> <!-- Thinner torso -->
                 
                 <!-- Head -->
                 <body name="head" pos="0 0 {0.65*scale_torso:.3f}">
-                    <geom type="sphere" size="0.10" rgba="0.8 0.7 0.7 1"/>
+                    <geom type="sphere" size="0.095" rgba="0.8 0.7 0.7 1"/>
                     <site name="head_site" pos="0 0 0.05" size="0.02" rgba="1 0 0 1"/>
                 </body>
 
-                <!-- Right Arm -->
-                <body name="upper_arm_r" pos="0 {0.18*scale_torso:.3f} {0.45*scale_torso:.3f}">
-                    <joint name="shoulder_r_yaw" type="hinge" axis="0 0 1" limited="true" range="-90 45" damping="3"/>
-                    <joint name="shoulder_r_pitch" type="hinge" axis="1 0 0" limited="true" range="-120 30" damping="3"/>
-                    <joint name="shoulder_r_roll" type="hinge" axis="0 1 0" limited="true" range="-60 60" damping="3"/>
+                <!-- Right Arm (PITCHING ARM) - EXTRA LONG FOR WINDUP -->
+                <body name="upper_arm_r" pos="0 {0.16*scale_torso*shoulder_width_multiplier:.3f} {0.45*scale_torso:.3f}">
+                    <joint name="shoulder_r_yaw" type="hinge" axis="0 0 1" limited="true" range="-120 60" damping="2"/> <!-- More range for windup -->
+                    <joint name="shoulder_r_pitch" type="hinge" axis="1 0 0" limited="true" range="-150 40" damping="2"/> <!-- More overhead range -->
+                    <joint name="shoulder_r_roll" type="hinge" axis="0 1 0" limited="true" range="-80 80" damping="2"/>
                     
-                    <geom type="capsule" fromto="0 0 0 {0.30*scale_limb:.3f} 0 0" size="0.06" rgba="0.7 0.3 0.3 1"/>
+                    <geom type="capsule" fromto="0 0 0 {0.38*scale_limb:.3f} 0 0" size="0.05" rgba="0.9 0.3 0.3 1"/> <!-- Longer, thinner -->
                     <site name="site_shoulder_r" pos="0 0 0" size="0.02" rgba="1 0 0 1"/>
 
-                    <body name="forearm_r" pos="{0.30*scale_limb:.3f} 0 0">
-                        <joint name="elbow_r" type="hinge" axis="0 1 0" limited="true" range="0 160" damping="2"/>
-                        <joint name="elbow_twist_r" type="hinge" axis="0 0 1" limited="true" range="-45 45" damping="2"/>
+                    <body name="forearm_r" pos="{0.38*scale_limb:.3f} 0 0">
+                        <joint name="elbow_r" type="hinge" axis="0 1 0" limited="true" range="0 165" damping="1.5"/> <!-- More extension -->
+                        <joint name="elbow_twist_r" type="hinge" axis="0 0 1" limited="true" range="-60 60" damping="1.5"/>
                         
-                        <geom type="capsule" fromto="0 0 0 {0.28*scale_limb:.3f} 0 0" size="0.05" rgba="0.8 0.4 0.4 1"/>
+                        <geom type="capsule" fromto="0 0 0 {0.35*scale_limb:.3f} 0 0" size="0.042" rgba="1.0 0.4 0.4 1"/> <!-- Longer -->
                         <site name="site_elbow_r" pos="0 0 0" size="0.02" rgba="0 1 0 1"/>
 
-                        <body name="hand_r" pos="{0.28*scale_limb:.3f} 0 0">
-                            <geom type="sphere" size="0.04" rgba="0.9 0.5 0.5 1"/>
+                        <body name="hand_r" pos="{0.35*scale_limb:.3f} 0 0">
+                            <geom type="sphere" size="0.038" rgba="1.0 0.5 0.5 1"/>
                             <site name="site_wrist_r" pos="0 0 0" size="0.02" rgba="0 0 1 1"/>
+                            <!-- Visual baseball in hand -->
+                            <geom name="baseball" type="sphere" size="0.03" pos="0.05 0 0" rgba="0.9 0.9 0.2 1" 
+                                  contype="0" conaffinity="0"/> <!-- No collisions -->
                         </body>
                     </body>
                 </body>
 
-                <!-- Left Arm -->
-                <body name="upper_arm_l" pos="0 {-0.18*scale_torso:.3f} {0.45*scale_torso:.3f}">
-                    <joint name="shoulder_l_yaw" type="hinge" axis="0 0 1" limited="true" range="-45 90" damping="3"/>
-                    <joint name="shoulder_l_pitch" type="hinge" axis="1 0 0" limited="true" range="-120 30" damping="3"/>
-                    <joint name="shoulder_l_roll" type="hinge" axis="0 1 0" limited="true" range="-60 60" damping="3"/>
+                <!-- Left Arm (GLOVE ARM) - BALANCED -->
+                <body name="upper_arm_l" pos="0 {-0.16*scale_torso*shoulder_width_multiplier:.3f} {0.45*scale_torso:.3f}">
+                    <joint name="shoulder_l_yaw" type="hinge" axis="0 0 1" limited="true" range="-60 120" damping="2"/>
+                    <joint name="shoulder_l_pitch" type="hinge" axis="1 0 0" limited="true" range="-120 30" damping="2"/>
+                    <joint name="shoulder_l_roll" type="hinge" axis="0 1 0" limited="true" range="-60 60" damping="2"/>
                     
-                    <geom type="capsule" fromto="0 0 0 {-0.30*scale_limb:.3f} 0 0" size="0.06" rgba="0.3 0.3 0.7 1"/>
+                    <geom type="capsule" fromto="0 0 0 {-0.35*scale_limb:.3f} 0 0" size="0.05" rgba="0.3 0.3 0.8 1"/>
                     <site name="site_shoulder_l" pos="0 0 0" size="0.02" rgba="1 0 0 1"/>
 
-                    <body name="forearm_l" pos="{-0.30*scale_limb:.3f} 0 0">
-                        <joint name="elbow_l" type="hinge" axis="0 1 0" limited="true" range="0 160" damping="2"/>
-                        <joint name="elbow_twist_l" type="hinge" axis="0 0 1" limited="true" range="-45 45" damping="2"/>
+                    <body name="forearm_l" pos="{-0.35*scale_limb:.3f} 0 0">
+                        <joint name="elbow_l" type="hinge" axis="0 1 0" limited="true" range="0 160" damping="1.5"/>
+                        <joint name="elbow_twist_l" type="hinge" axis="0 0 1" limited="true" range="-45 45" damping="1.5"/>
                         
-                        <geom type="capsule" fromto="0 0 0 {-0.28*scale_limb:.3f} 0 0" size="0.05" rgba="0.4 0.4 0.8 1"/>
+                        <geom type="capsule" fromto="0 0 0 {-0.32*scale_limb:.3f} 0 0" size="0.042" rgba="0.4 0.4 0.9 1"/>
                         <site name="site_elbow_l" pos="0 0 0" size="0.02" rgba="0 1 0 1"/>
 
-                        <body name="hand_l" pos="{-0.28*scale_limb:.3f} 0 0">
-                            <geom type="sphere" size="0.04" rgba="0.5 0.5 0.9 1"/>
+                        <body name="hand_l" pos="{-0.32*scale_limb:.3f} 0 0">
+                            <geom type="sphere" size="0.038" rgba="0.5 0.5 1.0 1"/>
                             <site name="site_wrist_l" pos="0 0 0" size="0.02" rgba="0 0 1 1"/>
                         </body>
                     </body>
                 </body>
             </body>
 
-            <!-- Right Leg -->
-            <body name="thigh_r" pos="0 {0.10*scale_torso:.3f} -0.05">
-                <joint name="hip_r_y" type="hinge" axis="0 0 1" limited="true" range="-30 30" damping="5"/>
-                <joint name="hip_r_x" type="hinge" axis="1 0 0" limited="true" range="-60 30" damping="5"/>
+            <!-- Right Leg - DRIVE LEG -->
+            <body name="thigh_r" pos="0 {0.07*scale_torso:.3f} -0.05">
+                <joint name="hip_r_y" type="hinge" axis="0 0 1" limited="true" range="-40 40" damping="4"/>
+                <joint name="hip_r_x" type="hinge" axis="1 0 0" limited="true" range="-70 40" damping="4"/>
                 
-                <geom type="capsule" fromto="0 0 0 0 0 -{0.45*scale_torso:.3f}" size="0.08" rgba="0.7 0.6 0.6 1"/>
+                <geom type="capsule" fromto="0 0 0 0 0 -{0.45*scale_torso:.3f}" size="0.065" rgba="0.7 0.6 0.6 1"/>
                 <site name="site_hip_r" pos="0 0 0" size="0.02" rgba="1 0 1 1"/>
 
                 <body name="shin_r" pos="0 0 -{0.45*scale_torso:.3f}">
-                    <joint name="knee_r" type="hinge" axis="1 0 0" limited="true" range="0 120" damping="4"/>
+                    <joint name="knee_r" type="hinge" axis="1 0 0" limited="true" range="0 130" damping="3"/>
                     
-                    <geom type="capsule" fromto="0 0 0 0 0 -{0.45*scale_torso:.3f}" size="0.07" rgba="0.6 0.7 0.6 1"/>
+                    <geom type="capsule" fromto="0 0 0 0 0 -{0.45*scale_torso:.3f}" size="0.055" rgba="0.6 0.7 0.6 1"/>
                     <site name="site_knee_r" pos="0 0 0" size="0.02" rgba="0 1 1 1"/>
 
                     <body name="foot_r" pos="0 0 -{0.45*scale_torso:.3f}">
-                        <geom type="sphere" size="0.05" rgba="0.8 0.8 0.6 1"/>
+                        <geom type="sphere" size="0.04" rgba="0.8 0.8 0.6 1"/>
                         <site name="site_ankle_r" pos="0 0 0" size="0.02" rgba="1 1 0 1"/>
                     </body>
                 </body>
             </body>
 
-            <!-- Left Leg -->
-            <body name="thigh_l" pos="0 {-0.10*scale_torso:.3f} -0.05">
-                <joint name="hip_l_y" type="hinge" axis="0 0 1" limited="true" range="-30 30" damping="5"/>
-                <joint name="hip_l_x" type="hinge" axis="1 0 0" limited="true" range="-60 30" damping="5"/>
+            <!-- Left Leg - PIVOT LEG -->
+            <body name="thigh_l" pos="0 {-0.07*scale_torso:.3f} -0.05">
+                <joint name="hip_l_y" type="hinge" axis="0 0 1" limited="true" range="-40 40" damping="4"/>
+                <joint name="hip_l_x" type="hinge" axis="1 0 0" limited="true" range="-70 40" damping="4"/>
                 
-                <geom type="capsule" fromto="0 0 0 0 0 -{0.45*scale_torso:.3f}" size="0.08" rgba="0.7 0.6 0.6 1"/>
+                <geom type="capsule" fromto="0 0 0 0 0 -{0.45*scale_torso:.3f}" size="0.065" rgba="0.7 0.6 0.6 1"/>
                 <site name="site_hip_l" pos="0 0 0" size="0.02" rgba="1 0 1 1"/>
 
                 <body name="shin_l" pos="0 0 -{0.45*scale_torso:.3f}">
-                    <joint name="knee_l" type="hinge" axis="1 0 0" limited="true" range="0 120" damping="4"/>
+                    <joint name="knee_l" type="hinge" axis="1 0 0" limited="true" range="0 130" damping="3"/>
                     
-                    <geom type="capsule" fromto="0 0 0 0 0 -{0.45*scale_torso:.3f}" size="0.07" rgba="0.6 0.7 0.6 1"/>
+                    <geom type="capsule" fromto="0 0 0 0 0 -{0.45*scale_torso:.3f}" size="0.055" rgba="0.6 0.7 0.6 1"/>
                     <site name="site_knee_l" pos="0 0 0" size="0.02" rgba="0 1 1 1"/>
 
                     <body name="foot_l" pos="0 0 -{0.45*scale_torso:.3f}">
-                        <geom type="sphere" size="0.05" rgba="0.8 0.8 0.6 1"/>
+                        <geom type="sphere" size="0.04" rgba="0.8 0.8 0.6 1"/>
                         <site name="site_ankle_l" pos="0 0 0" size="0.02" rgba="1 1 0 1"/>
                     </body>
                 </body>
@@ -917,9 +996,15 @@ mjcf = f"""
 </mujoco>
 """
 
-xml_path = "enhanced_pitcher_3d.xml"
+xml_path = "pitcher_optimized.xml"
 with open(xml_path, "w") as f:
     f.write(mjcf)
+
+print(f"\n  Created optimized pitcher model with:")
+print(f"    - Faster physics timestep (0.002s)")
+print(f"    - Enhanced joint ranges for pitching")
+print(f"    - Visual baseball in hand")
+print(f"    - Pitcher mound visualization")
 
 model = mujoco.MjModel.from_xml_path(xml_path)
 data = mujoco.MjData(model)
@@ -940,9 +1025,12 @@ for site_name in ["site_shoulder_r", "site_elbow_r", "site_wrist_r",
     if site_id != -1:
         site_ids[site_name] = site_id
 
-# Enhanced IK function
-def enhanced_ik(model, data, targets, max_iter=50, tolerance=0.01):
-    """Enhanced IK with damping and joint limits"""
+# Get baseball geom ID for visual effects
+baseball_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "baseball")
+
+# Enhanced IK function with faster convergence
+def enhanced_ik(model, data, targets, max_iter=30, tolerance=0.02):
+    """Enhanced IK with damping and joint limits - optimized for speed"""
     nv = model.nv
     
     for iteration in range(max_iter):
@@ -978,25 +1066,26 @@ def enhanced_ik(model, data, targets, max_iter=50, tolerance=0.01):
         if idx == 0:
             return  # No valid targets
         
-        # Damped least squares solution
+        # Damped least squares solution with adaptive damping
         jac_t = jac.T
-        damping = 1e-6
+        damping = 1e-5 + 1e-4 * iteration  # Adaptive damping
         hessian = jac @ jac_t + damping * np.eye(jac.shape[0])
         
         try:
             dq = jac_t @ np.linalg.solve(hessian, error)
         except np.linalg.LinAlgError:
-            # Fallback to simple gradient descent if matrix is singular
-            dq = jac_t @ error * 0.01
+            # Fallback to simple gradient descent
+            dq = jac_t @ error * 0.02
         
-        # Apply with step size limiting
-        max_step = 0.1
+        # Apply with adaptive step size
+        max_step = 0.15
         step_norm = np.linalg.norm(dq)
         if step_norm > max_step:
             dq = dq * max_step / step_norm
         
-        # Update positions directly
-        data.qpos[:] += dq * 0.1
+        # Update positions directly with momentum
+        momentum = 0.3
+        data.qpos[:] += dq * (0.1 + momentum * (1 - iteration/max_iter))
         
         # Check convergence
         if np.linalg.norm(error) < tolerance:
@@ -1009,130 +1098,170 @@ def enhanced_ik(model, data, targets, max_iter=50, tolerance=0.01):
 try:
     viewer = mujoco.viewer.launch_passive(model, data)
     viewer.cam.azimuth = 45
-    viewer.cam.elevation = -20
-    viewer.cam.distance = 3.0
-    viewer.cam.lookat[:] = [0, 0, 1.2]
+    viewer.cam.elevation = -15
+    viewer.cam.distance = 2.8
+    viewer.cam.lookat[:] = [0, -0.5, 1.0]  # Look slightly forward
     
-    print(f"\n  Playing {len(frames_data)} frames with enhanced 3D reconstruction...")
-    print("  Animation will loop continuously")
+    T = T_total
+    print(f"\n  Playing ALL {T} frames at FASTER SPEED")
+    print(f"  Capture frames around release: {max(0, release_frame-5)} to {min(T, release_frame+15)}")
+    print(f"  Animation will loop continuously")
     print("  Press ESC or close window to exit\n")
     
-    # Main animation loop - CONTINUOUS LOOPING
-    T = len(frames_data)
+    # FASTER PLAYBACK SETTINGS
     dt = 1.0 / max(fps, 1)
+    speed_multiplier = 2.0  # Play 2x faster than real-time
+    target_dt = dt / speed_multiplier
     
     # Store for smooth interpolation
     prev_targets = None
-    smoothing_factor = 0.3
+    smoothing_factor = 0.4  # Less smoothing for faster movements
     
     # Animation loop with reset capability
     iteration = 0
-    max_iterations = 100  # Maximum number of loops before auto-exit (set high)
+    max_iterations = 50  # Maximum number of loops
+    
+    # Statistics
+    frame_times = []
     
     while viewer.is_running() and iteration < max_iterations:
         frame_idx = 0
         loop_start_time = time.time()
+        loop_frame_count = 0
         
-        print(f"\n  Starting animation loop #{iteration + 1}")
+        print(f"\n  Starting FAST loop #{iteration + 1} ({speed_multiplier:.1f}x speed)")
         
         # Reset model to initial state
         data.qpos[:] = 0.0
         data.qvel[:] = 0.0
         mujoco.mj_forward(model, data)
         
+        # Reset baseball visibility
+        if baseball_geom_id != -1:
+            model.geom_rgba[baseball_geom_id][3] = 1.0  # Make baseball visible
+        
         while frame_idx < T and viewer.is_running():
-            start_time = time.time()
+            frame_start_time = time.time()
             
-            # Get landmarks for current frame
-            lm_idx = frame_to_landmark_idx[frame_idx]
+            # Convert key landmarks to MuJoCo coordinates WITH FRAME-AWARE MAPPING
+            targets = {}
             
-            if lm_idx >= 0 and lm_idx < len(landmarks_3d):
-                current_lm = landmarks_3d[lm_idx]
+            # Upper body - with frame-specific adjustments
+            targets['site_shoulder_r'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 11], frame_idx, T)
+            targets['site_elbow_r'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 13], frame_idx, T)
+            targets['site_wrist_r'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 15], frame_idx, T)
+            
+            targets['site_shoulder_l'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 12], frame_idx, T)
+            targets['site_elbow_l'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 14], frame_idx, T)
+            targets['site_wrist_l'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 16], frame_idx, T)
+            
+            # Lower body
+            targets['site_hip_r'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 23], frame_idx, T)
+            targets['site_knee_r'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 25], frame_idx, T)
+            targets['site_ankle_r'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 27], frame_idx, T)
+            
+            targets['site_hip_l'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 24], frame_idx, T)
+            targets['site_knee_l'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 26], frame_idx, T)
+            targets['site_ankle_l'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 28], frame_idx, T)
+            
+            # Head
+            targets['head_site'] = mp_to_mj_3d(landmarks_3d_full[frame_idx, 0], frame_idx, T)
+            
+            # Apply smoothing between frames (but not between loops)
+            if prev_targets is not None and frame_idx > 0:
+                for key in targets:
+                    if key in prev_targets:
+                        targets[key] = (1 - smoothing_factor) * prev_targets[key] + smoothing_factor * targets[key]
+            
+            # Apply IK - faster convergence for speed
+            enhanced_ik(model, data, targets, max_iter=15, tolerance=0.03)
+            
+            prev_targets = targets
+            
+            # Special visual effects for pitching sequence
+            if frame_idx == release_frame:
+                print(f"    ⚾ RELEASE at frame {frame_idx}!")
+                # Make throwing arm brighter
+                model.geom_rgba[6][0] = 1.0  # Right hand bright red
+                model.geom_rgba[6][1] = 0.3
+                model.geom_rgba[6][2] = 0.3
                 
-                # Convert key landmarks to MuJoCo coordinates
-                targets = {}
-                
-                # Upper body
-                targets['site_shoulder_r'] = mp_to_mj_3d(current_lm[11])
-                targets['site_elbow_r'] = mp_to_mj_3d(current_lm[13])
-                targets['site_wrist_r'] = mp_to_mj_3d(current_lm[15])
-                
-                targets['site_shoulder_l'] = mp_to_mj_3d(current_lm[12])
-                targets['site_elbow_l'] = mp_to_mj_3d(current_lm[14])
-                targets['site_wrist_l'] = mp_to_mj_3d(current_lm[16])
-                
-                # Lower body
-                targets['site_hip_r'] = mp_to_mj_3d(current_lm[23])
-                targets['site_knee_r'] = mp_to_mj_3d(current_lm[25])
-                targets['site_ankle_r'] = mp_to_mj_3d(current_lm[27])
-                
-                targets['site_hip_l'] = mp_to_mj_3d(current_lm[24])
-                targets['site_knee_l'] = mp_to_mj_3d(current_lm[26])
-                targets['site_ankle_l'] = mp_to_mj_3d(current_lm[28])
-                
-                # Head
-                targets['head_site'] = mp_to_mj_3d(current_lm[0])
-                
-                # Apply smoothing between frames (but not between loops)
-                if prev_targets is not None and frame_idx > 0:
-                    for key in targets:
-                        if key in prev_targets:
-                            targets[key] = (1 - smoothing_factor) * prev_targets[key] + smoothing_factor * targets[key]
-                
-                # Apply IK
-                enhanced_ik(model, data, targets, max_iter=20)
-                
-                prev_targets = targets
-                
-                # Highlight release frame
-                if frame_idx == release_frame:
-                    # Make throwing arm brighter at release
-                    if 'site_wrist_r' in site_ids:
-                        # Visual feedback by changing color temporarily
-                        model.geom_rgba[6][0] = 1.0  # Right hand red
-                        model.geom_rgba[6][1] = 0.5
-                        model.geom_rgba[6][2] = 0.5
+            elif frame_idx == release_frame + 1:
+                # Start ball release animation
+                if baseball_geom_id != -1:
+                    # Move ball forward from hand
+                    model.geom_pos[baseball_geom_id][1] -= 0.1  # Forward
+                    
+            elif release_frame + 1 < frame_idx <= release_frame + 10:
+                # Continue ball trajectory
+                if baseball_geom_id != -1:
+                    forward_speed = 0.15
+                    model.geom_pos[baseball_geom_id][1] -= forward_speed
+                    model.geom_pos[baseball_geom_id][2] += 0.02  # Slight upward arc
+                    
+                    # Fade ball out
+                    fade = 1.0 - (frame_idx - release_frame) / 15
+                    model.geom_rgba[baseball_geom_id][3] = max(0, fade)
+                    
+            elif frame_idx == release_frame + 11:
+                # Reset ball position and visibility
+                if baseball_geom_id != -1:
+                    model.geom_pos[baseball_geom_id][1] = 0.05
+                    model.geom_pos[baseball_geom_id][2] = 0
+                    model.geom_rgba[baseball_geom_id][3] = 0  # Hide ball
             
             # Forward dynamics and render
             mujoco.mj_forward(model, data)
             viewer.sync()
             
-            # Sleep for correct timing (slower for visibility)
-            elapsed = time.time() - start_time
-            sleep_time = max(0, dt * 1.5 - elapsed)  # Slow down by factor of 1.5
+            # FAST TIMING CONTROL
+            elapsed = time.time() - frame_start_time
+            frame_times.append(elapsed)
+            
+            # Calculate sleep time for desired speed
+            sleep_time = max(0, target_dt - elapsed)
             if sleep_time > 0:
                 time.sleep(sleep_time)
             
             frame_idx += 1
+            loop_frame_count += 1
             
-            # Show progress within current loop
-            if frame_idx % 30 == 0 or frame_idx == release_frame:
+            # Show progress within current loop (less frequent updates for speed)
+            if frame_idx % 20 == 0 or frame_idx == release_frame or frame_idx == release_frame + 1:
                 progress = frame_idx / T * 100
-                loop_status = f"Loop {iteration + 1}, Frame: {frame_idx}/{T}"
                 
                 if frame_idx < release_frame:
-                    pitch_status = f"Wind-up: {release_frame - frame_idx} frames"
+                    phase = "Wind-up"
+                    frames_to_go = release_frame - frame_idx
                 elif frame_idx == release_frame:
-                    pitch_status = "⚾ RELEASE!"
+                    phase = "⚾ RELEASE!"
+                    frames_to_go = 0
+                elif frame_idx <= release_frame + 5:
+                    phase = "Follow-through"
+                    frames_to_go = frame_idx - release_frame
                 else:
-                    pitch_status = f"Follow-through: {frame_idx - release_frame} frames"
+                    phase = "Recovery"
+                    frames_to_go = frame_idx - release_frame
                 
-                print(f"  {loop_status} ({progress:.1f}%) - {pitch_status}", end='\r')
+                fps_actual = 1.0 / (sum(frame_times[-10:]) / min(10, len(frame_times))) if frame_times else 0
+                print(f"  Frame: {frame_idx:4d}/{T} ({progress:5.1f}%) | {phase:15} | FPS: {fps_actual:5.1f}", end='\r')
                 
-                # Reset color after release
-                if frame_idx == release_frame + 5:
-                    model.geom_rgba[6][0] = 0.9  # Reset right hand color
+                # Reset arm color after release sequence
+                if frame_idx == release_frame + 6:
+                    model.geom_rgba[6][0] = 1.0  # Reset right hand color
                     model.geom_rgba[6][1] = 0.5
                     model.geom_rgba[6][2] = 0.5
         
         iteration += 1
         loop_time = time.time() - loop_start_time
-        print(f"\n  Completed loop #{iteration} in {loop_time:.1f} seconds")
+        avg_fps = loop_frame_count / loop_time if loop_time > 0 else 0
+        
+        print(f"\n  Completed loop #{iteration} in {loop_time:.1f}s ({avg_fps:.1f} avg FPS)")
         
         # Brief pause between loops
-        if viewer.is_running():
+        if viewer.is_running() and iteration < max_iterations:
             print("  Preparing next loop...")
-            time.sleep(0.5)
+            time.sleep(0.3)
             
 except KeyboardInterrupt:
     print("\n  Animation interrupted by user")
@@ -1153,10 +1282,12 @@ print("\n" + "=" * 60)
 print("PITCH RELEASE FRAME DETECTION RESULTS")
 print("=" * 60)
 print(f"\nPredicted Release Frame: {release_frame}")
-print(f"  - Wrist Velocity: {velocities_clean[release_frame]:.4f}")
-print(f"  - Arm Angle from Torso: {arm_vertical_clean[release_frame]:.2f}°")
-print(f"  - Elbow Extension: {elbow_extension_clean[release_frame]:.2f}°")
-print(f"  - Wrist Height: {wrist_heights_clean[release_frame]:.4f}")
-print(f"  - Arm Extension: {distances_clean[release_frame]:.4f}")
+print(f"  Total frames analyzed: {T_total}")
+print(f"  Release window: Frames {max(0, release_frame-10)} to {min(T_total, release_frame+15)}")
+print(f"  Wrist Velocity: {velocities_clean[release_frame]:.4f}")
+print(f"  Arm Angle from Torso: {arm_vertical_clean[release_frame]:.2f}°")
+print(f"  Elbow Extension: {elbow_extension_clean[release_frame]:.2f}°")
+print(f"  Wrist Height: {wrist_heights_clean[release_frame]:.4f}")
+print(f"  Arm Extension: {distances_clean[release_frame]:.4f}")
 print("=" * 60)
-print("\n✓ Analysis complete!")
+print("\n✓ Analysis complete! Animation captured all frames at faster speed.")
