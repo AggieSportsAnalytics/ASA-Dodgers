@@ -58,7 +58,8 @@ def save_annotations(annots: dict):
 def find_videos() -> list[str]:
     paths = sorted(glob.glob(os.path.join(VIDEO_DIR, "*.mp4")) +
                    glob.glob(os.path.join(VIDEO_DIR, "*.mkv")) +
-                   glob.glob(os.path.join(VIDEO_DIR, "*.avi")))
+                   glob.glob(os.path.join(VIDEO_DIR, "*.avi")) +
+                   glob.glob(os.path.join(VIDEO_DIR, "*.mov")))
     return paths
 
 
