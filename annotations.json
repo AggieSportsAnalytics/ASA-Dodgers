@@ -1,0 +1,611 @@
+[
+  {
+    "video": "Aaron Judge.mp4",
+    "total_frames": 492,
+    "fps": 60.0,
+    "contact_frame": 182,
+    "annotated_at": "2026-05-12T01:19:38"
+  },
+  {
+    "video": "Adam Duvall.mp4",
+    "total_frames": 492,
+    "fps": 60.0,
+    "contact_frame": 191,
+    "annotated_at": "2026-05-12T01:20:27"
+  },
+  {
+    "video": "Adley Rutschman.mp4",
+    "total_frames": 359,
+    "fps": 60.0,
+    "contact_frame": 182,
+    "annotated_at": "2026-05-12T01:20:50"
+  },
+  {
+    "video": "Adolis Garci\u0301a.mp4",
+    "total_frames": 396,
+    "fps": 60.0,
+    "contact_frame": 178,
+    "annotated_at": "2026-05-12T01:21:09"
+  },
+  {
+    "video": "Akin Baddoo.mp4",
+    "total_frames": 356,
+    "fps": 60.0,
+    "contact_frame": 179,
+    "annotated_at": "2026-05-12T01:21:20"
+  },
+  {
+    "video": "Alec Bohm.mp4",
+    "total_frames": 661,
+    "fps": 60.0,
+    "contact_frame": 176,
+    "annotated_at": "2026-05-12T01:21:54"
+  },
+  {
+    "video": "Alejandro Kirk.mp4",
+    "total_frames": 372,
+    "fps": 60.0,
+    "contact_frame": 173,
+    "annotated_at": "2026-05-12T01:22:06"
+  },
+  {
+    "video": "Alex Bregman.mp4",
+    "total_frames": 565,
+    "fps": 60.0,
+    "contact_frame": 185,
+    "annotated_at": "2026-05-12T01:22:15"
+  },
+  {
+    "video": "Andrew Vaughn.mp4",
+    "total_frames": 386,
+    "fps": 59.941160413696885,
+    "contact_frame": 175,
+    "annotated_at": "2026-05-12T01:22:24"
+  },
+  {
+    "video": "Anthony Rendon.mp4",
+    "total_frames": 409,
+    "fps": 60.0,
+    "contact_frame": 178,
+    "annotated_at": "2026-05-12T01:22:28"
+  },
+  {
+    "video": "Anthony Volpe.mp4",
+    "total_frames": 500,
+    "fps": 60.0,
+    "contact_frame": 214,
+    "annotated_at": "2026-05-12T01:22:36"
+  },
+  {
+    "video": "Austin Riley.mp4",
+    "total_frames": 601,
+    "fps": 59.90966201131821,
+    "contact_frame": 197,
+    "annotated_at": "2026-05-12T01:22:53"
+  },
+  {
+    "video": "Bo Bichette.mp4",
+    "total_frames": 484,
+    "fps": 59.96080170988426,
+    "contact_frame": 195,
+    "annotated_at": "2026-05-12T01:23:10"
+  },
+  {
+    "video": "Bobby Dalbec.mp4",
+    "total_frames": 474,
+    "fps": 60.0,
+    "contact_frame": 185,
+    "annotated_at": "2026-05-12T01:23:19"
+  },
+  {
+    "video": "Bobby Witt Jr.mp4",
+    "total_frames": 623,
+    "fps": 59.96315466268971,
+    "contact_frame": 201,
+    "annotated_at": "2026-05-12T01:23:35"
+  },
+  {
+    "video": "Bryan Reynolds.mp4",
+    "total_frames": 361,
+    "fps": 60.04002668445631,
+    "contact_frame": 180,
+    "annotated_at": "2026-05-12T01:23:53"
+  },
+  {
+    "video": "Bryce Harper.mp4",
+    "total_frames": 362,
+    "fps": 60.0,
+    "contact_frame": 189,
+    "annotated_at": "2026-05-12T01:24:12"
+  },
+  {
+    "video": "Bryson Stott.mp4",
+    "total_frames": 362,
+    "fps": 60.0,
+    "contact_frame": 181,
+    "annotated_at": "2026-05-12T01:24:17"
+  },
+  {
+    "video": "Byron Buxton.mp4",
+    "total_frames": 470,
+    "fps": 60.0,
+    "contact_frame": 187,
+    "annotated_at": "2026-05-12T01:24:34"
+  },
+  {
+    "video": "CJ Abrams.mp4",
+    "total_frames": 360,
+    "fps": 60.0,
+    "contact_frame": 186,
+    "annotated_at": "2026-05-12T01:24:43"
+  },
+  {
+    "video": "Carlos Correa.mp4",
+    "total_frames": 624,
+    "fps": 59.99173791670318,
+    "contact_frame": 176,
+    "annotated_at": "2026-05-12T01:25:25"
+  },
+  {
+    "video": "Christian Yelich.mp4",
+    "total_frames": 358,
+    "fps": 60.0,
+    "contact_frame": 176,
+    "annotated_at": "2026-05-12T01:25:38"
+  },
+  {
+    "video": "Christopher Morel.mp4",
+    "total_frames": 562,
+    "fps": 60.0,
+    "contact_frame": 179,
+    "annotated_at": "2026-05-12T01:25:50"
+  },
+  {
+    "video": "Clint Frazier.mp4",
+    "total_frames": 588,
+    "fps": 60.0,
+    "contact_frame": 175,
+    "annotated_at": "2026-05-12T01:25:58"
+  },
+  {
+    "video": "Cristian Pache.mp4",
+    "total_frames": 490,
+    "fps": 60.0,
+    "contact_frame": 184,
+    "annotated_at": "2026-05-12T01:26:18"
+  },
+  {
+    "video": "Elly De La Cruz.mp4",
+    "total_frames": 360,
+    "fps": 60.0,
+    "contact_frame": 180,
+    "annotated_at": "2026-05-12T01:26:27"
+  },
+  {
+    "video": "Eloy Jime\u0301nez.mp4",
+    "total_frames": 367,
+    "fps": 60.0,
+    "contact_frame": 182,
+    "annotated_at": "2026-05-12T01:26:35"
+  },
+  {
+    "video": "Eric Thames.mp4",
+    "total_frames": 362,
+    "fps": 60.0,
+    "contact_frame": 183,
+    "annotated_at": "2026-05-12T01:26:50"
+  },
+  {
+    "video": "Fernando Tatis Jr.mp4",
+    "total_frames": 365,
+    "fps": 60.0,
+    "contact_frame": 190,
+    "annotated_at": "2026-05-12T01:27:05"
+  },
+  {
+    "video": "Francisco Alvarez.mp4",
+    "total_frames": 405,
+    "fps": 59.948539544565335,
+    "contact_frame": 192,
+    "annotated_at": "2026-05-12T01:27:18"
+  },
+  {
+    "video": "Francisco Lindor.mp4",
+    "total_frames": 361,
+    "fps": 60.0,
+    "contact_frame": 194,
+    "annotated_at": "2026-05-12T01:27:27"
+  },
+  {
+    "video": "Freddie Freeman.mp4",
+    "total_frames": 362,
+    "fps": 60.0,
+    "contact_frame": 195,
+    "annotated_at": "2026-05-12T01:27:35"
+  },
+  {
+    "video": "George Springer.mp4",
+    "total_frames": 661,
+    "fps": 59.91679010451399,
+    "contact_frame": 196,
+    "annotated_at": "2026-05-12T01:28:15"
+  },
+  {
+    "video": "Giancarlo Stanton.mp4",
+    "total_frames": 661,
+    "fps": 60.0,
+    "contact_frame": 191,
+    "annotated_at": "2026-05-12T01:28:25"
+  },
+  {
+    "video": "Gunnar Henderson.mp4",
+    "total_frames": 419,
+    "fps": 60.0,
+    "contact_frame": 182,
+    "annotated_at": "2026-05-12T01:28:38"
+  },
+  {
+    "video": "Ha-Seong Kim.mp4",
+    "total_frames": 547,
+    "fps": 60.0,
+    "contact_frame": 181,
+    "annotated_at": "2026-05-12T01:28:52"
+  },
+  {
+    "video": "Isaac Paredes.mp4",
+    "total_frames": 438,
+    "fps": 60.0,
+    "contact_frame": 189,
+    "annotated_at": "2026-05-12T01:29:03"
+  },
+  {
+    "video": "Isiah Kiner-Falefa.mp4",
+    "total_frames": 538,
+    "fps": 60.0,
+    "contact_frame": 188,
+    "annotated_at": "2026-05-12T01:29:22"
+  },
+  {
+    "video": "J.D. Martinez.mp4",
+    "total_frames": 552,
+    "fps": 60.0,
+    "contact_frame": 188,
+    "annotated_at": "2026-05-12T01:29:34"
+  },
+  {
+    "video": "Jackie Bradley Jr.mp4",
+    "total_frames": 364,
+    "fps": 60.0,
+    "contact_frame": 203,
+    "annotated_at": "2026-05-12T01:30:00"
+  },
+  {
+    "video": "Jared Walsh.mp4",
+    "total_frames": 364,
+    "fps": 60.0,
+    "contact_frame": 200,
+    "annotated_at": "2026-05-12T01:30:12"
+  },
+  {
+    "video": "Jazz Chisholm Jr.mp4",
+    "total_frames": 390,
+    "fps": 59.90100494975251,
+    "contact_frame": 188,
+    "annotated_at": "2026-05-12T01:30:27"
+  },
+  {
+    "video": "Jeremy Pen\u0303a.mp4",
+    "total_frames": 664,
+    "fps": 59.938997514060546,
+    "contact_frame": 187,
+    "annotated_at": "2026-05-12T01:31:07"
+  },
+  {
+    "video": "Ji-Man Choi.mp4",
+    "total_frames": 367,
+    "fps": 60.0,
+    "contact_frame": 189,
+    "annotated_at": "2026-05-12T01:31:20"
+  },
+  {
+    "video": "Jo Adell.mp4",
+    "total_frames": 420,
+    "fps": 60.0,
+    "contact_frame": 175,
+    "annotated_at": "2026-05-12T01:31:32"
+  },
+  {
+    "video": "Joc Pederson.mp4",
+    "total_frames": 362,
+    "fps": 60.0,
+    "contact_frame": 191,
+    "annotated_at": "2026-05-12T01:31:45"
+  },
+  {
+    "video": "Joey Gallo.mp4",
+    "total_frames": 364,
+    "fps": 60.0,
+    "contact_frame": 185,
+    "annotated_at": "2026-05-12T01:31:52"
+  },
+  {
+    "video": "Joey Meneses.mp4",
+    "total_frames": 512,
+    "fps": 59.9387223145283,
+    "contact_frame": 185,
+    "annotated_at": "2026-05-12T01:32:10"
+  },
+  {
+    "video": "Joey Votto.mp4",
+    "total_frames": 359,
+    "fps": 60.0,
+    "contact_frame": 184,
+    "annotated_at": "2026-05-12T01:32:22"
+  },
+  {
+    "video": "Jonah Heim.mp4",
+    "total_frames": 358,
+    "fps": 60.0,
+    "contact_frame": 183,
+    "annotated_at": "2026-05-12T01:32:32"
+  },
+  {
+    "video": "Jorge Alfaro.mp4",
+    "total_frames": 680,
+    "fps": 60.0,
+    "contact_frame": 174,
+    "annotated_at": "2026-05-12T01:32:50"
+  },
+  {
+    "video": "Jorge Soler.mp4",
+    "total_frames": 503,
+    "fps": 60.0,
+    "contact_frame": 173,
+    "annotated_at": "2026-05-12T01:33:05"
+  },
+  {
+    "video": "Jose Abreu.mp4",
+    "total_frames": 544,
+    "fps": 60.0,
+    "contact_frame": 204,
+    "annotated_at": "2026-05-12T01:33:15"
+  },
+  {
+    "video": "Jose Altuve.mp4",
+    "total_frames": 560,
+    "fps": 59.93102246995297,
+    "contact_frame": 189,
+    "annotated_at": "2026-05-12T01:33:23"
+  },
+  {
+    "video": "Jose Trevino.mp4",
+    "total_frames": 502,
+    "fps": 60.0,
+    "contact_frame": 190,
+    "annotated_at": "2026-05-12T01:33:30"
+  },
+  {
+    "video": "Josh Naylor.mp4",
+    "total_frames": 362,
+    "fps": 60.0,
+    "contact_frame": 189,
+    "annotated_at": "2026-05-12T01:33:42"
+  },
+  {
+    "video": "Juan Soto.mp4",
+    "total_frames": 361,
+    "fps": 60.0,
+    "contact_frame": 178,
+    "annotated_at": "2026-05-12T01:33:51"
+  },
+  {
+    "video": "Justin Turner.mp4",
+    "total_frames": 383,
+    "fps": 60.0,
+    "contact_frame": 180,
+    "annotated_at": "2026-05-12T01:33:59"
+  },
+  {
+    "video": "Justin Upton.mp4",
+    "total_frames": 437,
+    "fps": 60.0,
+    "contact_frame": 206,
+    "annotated_at": "2026-05-12T01:34:20"
+  },
+  {
+    "video": "Kurt Suzuki.mp4",
+    "total_frames": 450,
+    "fps": 59.991667823913346,
+    "contact_frame": 178,
+    "annotated_at": "2026-05-12T01:34:32"
+  },
+  {
+    "video": "Lourdes Gurriel Jr.mp4",
+    "total_frames": 605,
+    "fps": 59.95973777938368,
+    "contact_frame": 182,
+    "annotated_at": "2026-05-12T01:34:53"
+  },
+  {
+    "video": "Luis Robert.mp4",
+    "total_frames": 484,
+    "fps": 60.0,
+    "contact_frame": 183,
+    "annotated_at": "2026-05-12T01:35:09"
+  },
+  {
+    "video": "Luke Voit.mp4",
+    "total_frames": 614,
+    "fps": 60.0,
+    "contact_frame": 181,
+    "annotated_at": "2026-05-12T01:35:20"
+  },
+  {
+    "video": "Manny Machado.mp4",
+    "total_frames": 555,
+    "fps": 59.936722210504115,
+    "contact_frame": 180,
+    "annotated_at": "2026-05-12T01:35:29"
+  },
+  {
+    "video": "Manuel Margot.mp4",
+    "total_frames": 600,
+    "fps": 60.0,
+    "contact_frame": 180,
+    "annotated_at": "2026-05-12T01:35:39"
+  },
+  {
+    "video": "Marcell Ozuna.mp4",
+    "total_frames": 659,
+    "fps": 59.912282259353304,
+    "contact_frame": 188,
+    "annotated_at": "2026-05-12T01:35:53"
+  },
+  {
+    "video": "Matt Chapman.mp4",
+    "total_frames": 662,
+    "fps": 59.993627942651486,
+    "contact_frame": 181,
+    "annotated_at": "2026-05-12T01:36:00"
+  },
+  {
+    "video": "Mike Trout.mp4",
+    "total_frames": 405,
+    "fps": 59.948539544565335,
+    "contact_frame": 171,
+    "annotated_at": "2026-05-12T01:36:17"
+  },
+  {
+    "video": "Nick Castellanos.mp4",
+    "total_frames": 397,
+    "fps": 60.0,
+    "contact_frame": 184,
+    "annotated_at": "2026-05-12T01:36:24"
+  },
+  {
+    "video": "Oscar Mercado.mp4",
+    "total_frames": 485,
+    "fps": 60.0,
+    "contact_frame": 185,
+    "annotated_at": "2026-05-12T01:36:30"
+  },
+  {
+    "video": "Randy Arozarena.mp4",
+    "total_frames": 478,
+    "fps": 60.0,
+    "contact_frame": 189,
+    "annotated_at": "2026-05-12T01:37:02"
+  },
+  {
+    "video": "Ronald Acun\u0303a Jr.mp4",
+    "total_frames": 595,
+    "fps": 60.0,
+    "contact_frame": 176,
+    "annotated_at": "2026-05-12T01:37:11"
+  },
+  {
+    "video": "Royce Lewis.mp4",
+    "total_frames": 474,
+    "fps": 60.0,
+    "contact_frame": 190,
+    "annotated_at": "2026-05-12T01:37:23"
+  },
+  {
+    "video": "Salvador Perez.mp4",
+    "total_frames": 434,
+    "fps": 59.890572919942144,
+    "contact_frame": 189,
+    "annotated_at": "2026-05-12T01:37:36"
+  },
+  {
+    "video": "Seiya Suzuki.mp4",
+    "total_frames": 653,
+    "fps": 60.0,
+    "contact_frame": 175,
+    "annotated_at": "2026-05-12T01:37:46"
+  },
+  {
+    "video": "Spencer Torkelson.mp4",
+    "total_frames": 654,
+    "fps": 59.92197659297789,
+    "contact_frame": 0,
+    "annotated_at": "2026-05-12T01:37:47"
+  },
+  {
+    "video": "Teoscar Herna\u0301ndez.mp4",
+    "total_frames": 452,
+    "fps": 60.0,
+    "contact_frame": 190,
+    "annotated_at": "2026-05-12T01:38:04"
+  },
+  {
+    "video": "Tim Anderson.mp4",
+    "total_frames": 519,
+    "fps": 60.0,
+    "contact_frame": 188,
+    "annotated_at": "2026-05-12T01:38:11"
+  },
+  {
+    "video": "Travis d_Arnaud.mp4",
+    "total_frames": 524,
+    "fps": 60.0,
+    "contact_frame": 190,
+    "annotated_at": "2026-05-12T01:38:18"
+  },
+  {
+    "video": "Trea Turner.mp4",
+    "total_frames": 608,
+    "fps": 60.0,
+    "contact_frame": 193,
+    "annotated_at": "2026-05-12T01:38:27"
+  },
+  {
+    "video": "Trey Mancini.mp4",
+    "total_frames": 381,
+    "fps": 60.0,
+    "contact_frame": 178,
+    "annotated_at": "2026-05-12T01:38:33"
+  },
+  {
+    "video": "Tyler O_Neill.mp4",
+    "total_frames": 572,
+    "fps": 60.0,
+    "contact_frame": 183,
+    "annotated_at": "2026-05-12T01:38:41"
+  },
+  {
+    "video": "Vladimir Guerrero Jr.mp4",
+    "total_frames": 644,
+    "fps": 59.911330765317246,
+    "contact_frame": 158,
+    "annotated_at": "2026-05-12T01:38:50"
+  },
+  {
+    "video": "Will Smith.mp4",
+    "total_frames": 514,
+    "fps": 59.9494286039713,
+    "contact_frame": 189,
+    "annotated_at": "2026-05-12T01:38:55"
+  },
+  {
+    "video": "Willson Contreras.mp4",
+    "total_frames": 611,
+    "fps": 60.0,
+    "contact_frame": 144,
+    "annotated_at": "2026-05-12T01:39:04"
+  },
+  {
+    "video": "Yandy Di\u0301az.mp4",
+    "total_frames": 613,
+    "fps": 60.0,
+    "contact_frame": 190,
+    "annotated_at": "2026-05-12T01:39:16"
+  },
+  {
+    "video": "Yoelqui Ce\u0301spedes.mp4",
+    "total_frames": 528,
+    "fps": 60.0,
+    "contact_frame": 188,
+    "annotated_at": "2026-05-12T01:39:24"
+  }
+]

@@ -1,0 +1,8 @@
+# Video files and extracted frame cache
+Batting/
+__pycache__/
+*.pyc
+*.pth
+*.pt
+checkpoints/
+.claude/
